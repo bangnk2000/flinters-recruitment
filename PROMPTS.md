@@ -18,3 +18,11 @@ Go
 ---
 
 phần dòng lỗi làm như đề xuất, tôi muốn thêm 1 điều nữa đó là ghi các dòng lỗi đó vào 1 file. còn lại thì tôi đồng ý plan trên
+
+---
+
+Đọc AGENTS.md và làm theo Startup, bắt đầu feature infra/cli-skeleton
+
+---
+
+đã setting config hãy commit tiếp đi

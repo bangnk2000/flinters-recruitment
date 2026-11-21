@@ -9,10 +9,13 @@
       "tier": "standard",
       "designDoc": null,
       "dependencies": [],
-      "acceptance": ["Runnable via CLI with --input/--output", "Handle missing files gracefully"],
-      "status": "todo",
-      "evidence": "",
-      "testedAt": null,
+      "acceptance": [
+        "Runnable via CLI with --input/--output",
+        "Handle missing files gracefully"
+      ],
+      "status": "pass",
+      "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 — jq lint, gofmt, go vet, go test -race (TestRun 9/9 subtests), go build; gate [5] PENDING until agg/stream-parse adds testdata/golden. Runtime (built bin/aggregator, WSL): AC \"Runnable via CLI\": `--input in.csv --output out/nested` -> exit 0, nested dir created, no output; `-h` -> exit 0, usage on stdout; `--input in.csv` -> exit 2 \"aggregator: --output is required\" + usage on stderr; `--bogus` -> exit 2 \"flag provided but not defined: -bogus\". AC \"Handle missing files gracefully\": `--input nope.csv` -> exit 1 \"aggregator: cannot read input: open .../nope.csv: no such file or directory\"; input is a directory -> exit 1 \"cannot read input: ... is a directory\".",
+      "testedAt": "2026-11-21",
       "ci": null,
       "ownerPending": []
     },
@@ -22,8 +25,14 @@
       "description": "Read the CSV row by row; memory must not grow with file size. Validate the header. A row is malformed if it has the wrong field count, an empty campaign_id, a date that is not YYYY-MM-DD, a non-integer or negative impressions/clicks/conversions, or a spend that is not a decimal or is negative. Malformed rows are skipped and counted; the count goes to stderr. Every malformed row is also written to <output>/malformed_rows.csv (line_number,reason,raw_line).",
       "tier": "standard",
       "designDoc": null,
-      "dependencies": ["infra/cli-skeleton"],
-      "acceptance": ["Handle malformed rows gracefully", "Memory-efficient on ~1GB input", "Malformed rows written to a file (owner, 2026-11-21)"],
+      "dependencies": [
+        "infra/cli-skeleton"
+      ],
+      "acceptance": [
+        "Handle malformed rows gracefully",
+        "Memory-efficient on ~1GB input",
+        "Malformed rows written to a file (owner, 2026-11-21)"
+      ],
       "status": "todo",
       "evidence": "",
       "testedAt": null,
@@ -36,14 +45,26 @@
       "description": "For each campaign_id compute total_impressions, total_clicks, total_spend (summed as int64 cents), total_conversions, CTR = clicks/impressions (0 when impressions = 0), and CPA = spend/conversions (null when conversions = 0).",
       "tier": "standard",
       "designDoc": null,
-      "dependencies": ["agg/stream-parse"],
-      "acceptance": ["Aggregate by campaign_id: totals, CTR, CPA (null if conversions = 0)", "Correct results, matching expected values precisely"],
+      "dependencies": [
+        "agg/stream-parse"
+      ],
+      "acceptance": [
+        "Aggregate by campaign_id: totals, CTR, CPA (null if conversions = 0)",
+        "Correct results, matching expected values precisely"
+      ],
       "status": "todo",
       "evidence": "",
       "testedAt": null,
       "ci": null,
       "ownerPending": [
-        { "item": "CTR when total_impressions = 0 (brief silent)", "since": "2026-11-21", "options": ["CTR = 0", "exclude from CTR ranking"] }
+        {
+          "item": "CTR when total_impressions = 0 (brief silent)",
+          "since": "2026-11-21",
+          "options": [
+            "CTR = 0",
+            "exclude from CTR ranking"
+          ]
+        }
       ]
     },
     {
@@ -52,16 +73,41 @@
       "description": "Write the 10 campaigns with the highest CTR to <output>/top10_ctr.csv. Columns: campaign_id,total_impressions,total_clicks,total_spend,total_conversions,CTR,CPA.",
       "tier": "standard",
       "designDoc": null,
-      "dependencies": ["agg/aggregate"],
-      "acceptance": ["Top 10 campaigns with the highest CTR, CSV, brief's column order"],
+      "dependencies": [
+        "agg/aggregate"
+      ],
+      "acceptance": [
+        "Top 10 campaigns with the highest CTR, CSV, brief's column order"
+      ],
       "status": "todo",
       "evidence": "",
       "testedAt": null,
       "ci": null,
       "ownerPending": [
-        { "item": "Tie-break on equal CTR", "since": "2026-11-21", "options": ["campaign_id ascending", "higher total_impressions first"] },
-        { "item": "Number format", "since": "2026-11-21", "options": ["CTR 4 dp, CPA 2 dp, spend 2 dp (as brief samples)", "full precision"] },
-        { "item": "CPA null rendering in CSV", "since": "2026-11-21", "options": ["empty cell", "literal null"] }
+        {
+          "item": "Tie-break on equal CTR",
+          "since": "2026-11-21",
+          "options": [
+            "campaign_id ascending",
+            "higher total_impressions first"
+          ]
+        },
+        {
+          "item": "Number format",
+          "since": "2026-11-21",
+          "options": [
+            "CTR 4 dp, CPA 2 dp, spend 2 dp (as brief samples)",
+            "full precision"
+          ]
+        },
+        {
+          "item": "CPA null rendering in CSV",
+          "since": "2026-11-21",
+          "options": [
+            "empty cell",
+            "literal null"
+          ]
+        }
       ]
     },
     {
@@ -70,14 +116,26 @@
       "description": "Write the 10 campaigns with the lowest CPA to <output>/top10_cpa.csv, excluding campaigns with zero conversions. Same columns and number format as top10_ctr.",
       "tier": "standard",
       "designDoc": null,
-      "dependencies": ["agg/aggregate"],
-      "acceptance": ["Top 10 campaigns with the lowest CPA, CSV", "Exclude campaigns with zero conversions"],
+      "dependencies": [
+        "agg/aggregate"
+      ],
+      "acceptance": [
+        "Top 10 campaigns with the lowest CPA, CSV",
+        "Exclude campaigns with zero conversions"
+      ],
       "status": "todo",
       "evidence": "",
       "testedAt": null,
       "ci": null,
       "ownerPending": [
-        { "item": "Tie-break on equal CPA", "since": "2026-11-21", "options": ["campaign_id ascending", "higher total_conversions first"] }
+        {
+          "item": "Tie-break on equal CPA",
+          "since": "2026-11-21",
+          "options": [
+            "campaign_id ascending",
+            "higher total_conversions first"
+          ]
+        }
       ]
     },
     {
@@ -86,8 +144,16 @@
       "description": "Run bin/aggregator on ad_data.csv under /usr/bin/time -v and record wall time and peak RSS (max resident set size) in docs/benchmark.log. Commit the real outputs to results/. Optimise (buffer sizes, parallel parse) only if numbers justify it.",
       "tier": "standard",
       "designDoc": null,
-      "dependencies": ["agg/top10-ctr", "agg/top10-cpa"],
-      "acceptance": ["Processing time for the 1GB file", "Peak memory usage", "Benchmark logs (optional)", "Output result files committed"],
+      "dependencies": [
+        "agg/top10-ctr",
+        "agg/top10-cpa"
+      ],
+      "acceptance": [
+        "Processing time for the 1GB file",
+        "Peak memory usage",
+        "Benchmark logs (optional)",
+        "Output result files committed"
+      ],
       "status": "todo",
       "evidence": "",
       "testedAt": null,
@@ -100,8 +166,15 @@
       "description": "Move the brief to docs/brief.md. Write README.md with setup, how to run, libraries used, processing time, peak memory, and the non-obvious decisions (cents, malformed-row policy, tie-break). Add a Dockerfile. PROMPTS.md must be complete and verbatim.",
       "tier": "standard",
       "designDoc": null,
-      "dependencies": ["perf/benchmark"],
-      "acceptance": ["README: setup, run, libraries, time, memory", "Documented decisions", "Dockerfile (optional)", "PROMPTS.md raw prompts"],
+      "dependencies": [
+        "perf/benchmark"
+      ],
+      "acceptance": [
+        "README: setup, run, libraries, time, memory",
+        "Documented decisions",
+        "Dockerfile (optional)",
+        "PROMPTS.md raw prompts"
+      ],
       "status": "todo",
       "evidence": "",
       "testedAt": null,
