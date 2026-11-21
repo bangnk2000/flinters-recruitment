@@ -172,11 +172,20 @@
         "Benchmark logs (optional)",
         "Output result files committed"
       ],
-      "status": "todo",
-      "evidence": "",
-      "testedAt": null,
+      "status": "pass",
+      "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 (all gates incl. gate [5] golden diff). AC \"Processing time for the 1GB file\" + \"Peak memory usage\" + \"Benchmark logs\": `RUNS=5 bash scripts/benchmark.sh` -> exit 0, docs/benchmark.log: 1043304870-byte input, AMD Ryzen 7 7700 (4 vCPU WSL2), Go 1.25.1; read-only baseline cat 0.16s; runs wall 4.60/4.70/2.67/4.63/4.53 s (median 4.60 s; run 3 wall < user is a WSL clock artefact, kept as logged), user 4.11-4.28 s, maxrss 2048-2304 kB; VmHWM sampled from /proc = 2304 kB. Every run: \"26843544 rows processed, 0 malformed rows skipped, 50 campaigns\". AC \"Output result files committed\": results/top10_ctr.csv, results/top10_cpa.csv (identical to the awk-verified outputs of sessions 5-6), results/malformed_rows.csv (header only). CPU-bound single thread (pprof: bytes.Cut/IndexByte + parseRecord); no optimisation applied, see ownerPending.",
+      "testedAt": "2026-11-21",
       "ci": null,
-      "ownerPending": []
+      "ownerPending": [
+        {
+          "item": "Parallel parse: ~3x faster on 4 cores (CPU-bound, 4.6s now) at the cost of chunked reading + ordered malformed-row line numbers",
+          "since": "2026-11-21",
+          "options": [
+            "keep single-threaded (agent default: 4.6s / 2 MB is already good, simpler code)",
+            "add a parallel parse as a new ledger entry"
+          ]
+        }
+      ]
     },
     {
       "id": "docs/submission",

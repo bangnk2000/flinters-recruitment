@@ -75,3 +75,12 @@ Append-only, one block per session.
 - Numbers: the real top10_cpa output is diff-identical to an awk ranking. The run took 4.55s with max RSS 2048 kB.
 - Issues: rerunning a stale scratch startup script flipped top10-ctr back to in-progress. It was restored with
   `git checkout -- feature_list.json` before any other edit.
+
+## 2026-11-21 — session 7
+- Goal: `perf/benchmark`.
+- Done: `scripts/benchmark.sh`, `docs/benchmark.log` (5 runs), and `results/` with the real outputs, committed.
+- Decisions:
+  - Runs are warm-cache only, because dropping the page cache needs root. The log says so.
+  - No optimisation: 4.6s for 1 GB with ~2 MB RSS is good. Parallel parse is an `ownerPending` item on perf/benchmark.
+- Numbers: median wall time 4.60s. Read-only baseline is 0.16s, so the program is CPU-bound. maxrss is 2048–2304 kB and
+  VmHWM is 2304 kB. Run 3 showed wall 2.67s < user 4.24s, which is a WSL clock artefact; it is kept as logged.

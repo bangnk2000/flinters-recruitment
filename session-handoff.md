@@ -2,6 +2,13 @@
 Newest first. On resume read ONLY the first entry. Close: prepend one entry, keep ≤ 5,
 move the oldest verbatim to docs/harness/session-handoff-archive.md.
 
+## 2026-11-21 (7) — benchmark + committed results (`perf/benchmark` = pass)
+- Done: scripts/benchmark.sh, docs/benchmark.log, results/*.csv. Commit: see `git log -1`.
+- Proof: 5 runs with a median of 4.60s and ~2.2 MB RSS (VmHWM 2304 kB). init.sh is green.
+- Next: `docs/submission`. FIRST get the owner's answers on the 8 `ownerPending` items, because the README states the final rules.
+  If the number format or tie-break changes, update the goldens and rerun `bash scripts/benchmark.sh` so that results/ stays current.
+- Watch out: the brief must move to docs/brief.md before README.md is rewritten. Dockerfile: Go build stage + a distroless/static run stage.
+
 ## 2026-11-21 (6) — top10_cpa.csv; all output features done (`agg/top10-cpa` = pass)
 - Done: TopByCPA (excludes conversions = 0, CPA asc, id asc). The CLI writes both reports from one table. Commit: see `git log -1`.
 - Proof: `bash init.sh` is green and gate [5] diffs all 3 goldens. The real top10_cpa is identical to an awk ranking (4.55s, 2 MB).
@@ -31,12 +38,3 @@ move the oldest verbatim to docs/harness/session-handoff-archive.md.
 - Next: `agg/aggregate`. Replace the no-op `func(ingest.Record) {}` in `internal/cli/cli.go` with the aggregator, and copy
   CampaignID (`m[string(b)]` lookup first, so that 26.8M rows don't allocate).
 - Watch out: 2 new `ownerPending` items on stream-parse. When writing Go source, never paste a raw BOM; use `\xef\xbb\xbf`.
-
-## 2026-11-21 (2) — CLI skeleton done (`infra/cli-skeleton` = pass)
-- Done: go.mod, cmd/aggregator, internal/cli (Run + tests). NOT committed: git has no author identity yet.
-- Proof: `bash init.sh` is green (gate [5] PENDING). The built binary was run against each exit path; the observed
-  lines are quoted in the ledger evidence.
-- Next: set the git identity and commit the harness + skeleton → `agg/stream-parse`. Create testdata/sample.csv
-  with malformed rows and testdata/golden/ in that feature so that gate [5] goes live.
-- Watch out: WSL's default shell is fish, so run scripts as `bash file.sh`. `internal/cli.run` only opens and stats the
-  input; stream-parse plugs the reader in there.
