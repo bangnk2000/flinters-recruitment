@@ -64,3 +64,14 @@ Append-only, one block per session.
   - The owner hasn't answered the open questions, so the defaults apply.
 - Numbers: the real top-10 CTR output is diff-identical to an awk ranking. The run took 4.77s with max RSS 2176 kB.
   All 10 real CTRs print as 0.0275 at 4 dp, which was added to the "Number format" `ownerPending` item.
+
+## 2026-11-21 — session 6
+- Goal: `agg/top10-cpa`.
+- Done: `report.TopByCPA` and `TopCPAFile`. The CLI writes both reports through one table loop.
+  testdata/golden/top10_cpa.csv was added (CMP004 has 0 conversions and is excluded). The first handoff entry was rotated to the archive.
+- Decisions:
+  - Zero-conversion campaigns are filtered out before sorting, as the brief requires.
+  - Ties on equal CPA are broken by id ascending (agent default, in `ownerPending`).
+- Numbers: the real top10_cpa output is diff-identical to an awk ranking. The run took 4.55s with max RSS 2048 kB.
+- Issues: rerunning a stale scratch startup script flipped top10-ctr back to in-progress. It was restored with
+  `git checkout -- feature_list.json` before any other edit.

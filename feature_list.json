@@ -141,9 +141,9 @@
         "Top 10 campaigns with the lowest CPA, CSV",
         "Exclude campaigns with zero conversions"
       ],
-      "status": "todo",
-      "evidence": "",
-      "testedAt": null,
+      "status": "pass",
+      "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 — jq lint, gofmt, vet, go test -race (report: TestTopByCPAOrdersAndTruncates 12->10 + input untouched, TestTopByCPAExcludesZeroConversionsAndTieBreaksByID, TestTopByCPAAllZeroConversions, plus the CTR/CSV tests), build, gate [5]: sample -> top10_cpa.csv == testdata/golden/top10_cpa.csv (CMP001 3.47, CMP003 3.75, CMP002 6.56; CMP004 with 0 conversions excluded). AC \"Top 10 campaigns with the lowest CPA, CSV\" + \"Exclude campaigns with zero conversions\": real ad_data.csv -> exit 0, top10_cpa.csv header + 10 rows (CMP016 19.29, CMP049, CMP032, CMP034, CMP040, CMP004, CMP047, CMP045, CMP022, CMP024 19.33), diff-identical to an independent awk ranking (zero-conversion campaigns skipped, full-precision CPA asc, id asc); wall 4.55s, max RSS 2048 kB.",
+      "testedAt": "2026-11-21",
       "ci": null,
       "ownerPending": [
         {

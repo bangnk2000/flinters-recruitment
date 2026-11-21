@@ -61,6 +61,45 @@ func TestTopByCTRFewerThanN(t *testing.T) {
 	}
 }
 
+func TestTopByCPAOrdersAndTruncates(t *testing.T) {
+	var cs []agg.Campaign
+	for i := 12; i >= 1; i-- { // CMPxx has CPA = xx dollars
+		cs = append(cs, campaign(fmt.Sprintf("CMP%02d", i), 1000, 10, int64(i)*100, 1))
+	}
+	input := slices.Clone(cs)
+
+	got := ids(TopByCPA(cs, TopN))
+	want := []string{"CMP01", "CMP02", "CMP03", "CMP04", "CMP05", "CMP06", "CMP07", "CMP08", "CMP09", "CMP10"}
+	if !slices.Equal(got, want) {
+		t.Errorf("top = %v, want %v", got, want)
+	}
+	if !slices.Equal(ids(cs), ids(input)) {
+		t.Error("TopByCPA reordered its input")
+	}
+}
+
+func TestTopByCPAExcludesZeroConversionsAndTieBreaksByID(t *testing.T) {
+	cs := []agg.Campaign{
+		campaign("CMP_ZERO", 1000, 10, 1, 0), // excluded despite the tiny spend
+		campaign("CMP_C", 1000, 10, 2000, 2), // 10.00
+		campaign("CMP_A", 1000, 10, 1000, 1), // 10.00
+		campaign("CMP_D", 1000, 10, 500, 1),  // 5.00
+		campaign("CMP_B", 1000, 10, 3000, 3), // 10.00
+	}
+	got := ids(TopByCPA(cs, TopN))
+	want := []string{"CMP_D", "CMP_A", "CMP_B", "CMP_C"}
+	if !slices.Equal(got, want) {
+		t.Errorf("top = %v, want %v", got, want)
+	}
+}
+
+func TestTopByCPAAllZeroConversions(t *testing.T) {
+	cs := []agg.Campaign{campaign("CMP1", 10, 1, 100, 0)}
+	if got := TopByCPA(cs, TopN); len(got) != 0 {
+		t.Errorf("top = %v, want empty", ids(got))
+	}
+}
+
 func TestWriteCSV(t *testing.T) {
 	path := filepath.Join(t.TempDir(), TopCTRFile)
 	err := WriteCSV(path, []agg.Campaign{

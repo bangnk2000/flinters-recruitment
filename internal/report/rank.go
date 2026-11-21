@@ -21,3 +21,17 @@ func TopByCTR(campaigns []agg.Campaign, n int) []agg.Campaign {
 	})
 	return ranked[:min(n, len(ranked))]
 }
+
+// TopByCPA returns up to n campaigns with the lowest CPA, excluding campaigns
+// without conversions. Equal CPAs are ordered by campaign ID ascending.
+func TopByCPA(campaigns []agg.Campaign, n int) []agg.Campaign {
+	ranked := slices.DeleteFunc(slices.Clone(campaigns), func(c agg.Campaign) bool {
+		return c.Conversions == 0
+	})
+	slices.SortFunc(ranked, func(a, b agg.Campaign) int {
+		cpaA, _ := a.CPA()
+		cpaB, _ := b.CPA()
+		return cmp.Or(cmp.Compare(cpaA, cpaB), strings.Compare(a.ID, b.ID))
+	})
+	return ranked[:min(n, len(ranked))]
+}

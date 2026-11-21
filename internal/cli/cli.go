@@ -105,8 +105,17 @@ func run(cfg config, stderr io.Writer) error {
 	}
 	campaigns := aggregator.Campaigns()
 
-	if err := report.WriteCSV(filepath.Join(cfg.output, report.TopCTRFile), report.TopByCTR(campaigns, report.TopN)); err != nil {
-		return fmt.Errorf("cannot write %s: %w", report.TopCTRFile, err)
+	reports := []struct {
+		file   string
+		ranked []agg.Campaign
+	}{
+		{report.TopCTRFile, report.TopByCTR(campaigns, report.TopN)},
+		{report.TopCPAFile, report.TopByCPA(campaigns, report.TopN)},
+	}
+	for _, r := range reports {
+		if err := report.WriteCSV(filepath.Join(cfg.output, r.file), r.ranked); err != nil {
+			return fmt.Errorf("cannot write %s: %w", r.file, err)
+		}
 	}
 
 	fmt.Fprintf(stderr, "aggregator: %d rows processed, %d malformed rows skipped (see %s), %d campaigns\n",

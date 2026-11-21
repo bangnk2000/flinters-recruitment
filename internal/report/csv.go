@@ -12,6 +12,7 @@ import (
 // File names of the reports inside the output directory.
 const (
 	TopCTRFile = "top10_ctr.csv"
+	TopCPAFile = "top10_cpa.csv"
 )
 
 var header = []string{

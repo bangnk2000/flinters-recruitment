@@ -2,6 +2,14 @@
 Newest first. On resume read ONLY the first entry. Close: prepend one entry, keep ≤ 5,
 move the oldest verbatim to docs/harness/session-handoff-archive.md.
 
+## 2026-11-21 (6) — top10_cpa.csv; all output features done (`agg/top10-cpa` = pass)
+- Done: TopByCPA (excludes conversions = 0, CPA asc, id asc). The CLI writes both reports from one table. Commit: see `git log -1`.
+- Proof: `bash init.sh` is green and gate [5] diffs all 3 goldens. The real top10_cpa is identical to an awk ranking (4.55s, 2 MB).
+- Next: `perf/benchmark`. Run `/usr/bin/time -v` on ad_data.csv, write results/ + docs/benchmark.log, and cross-check RSS with VmHWM.
+  Then `docs/submission`.
+- Watch out: there are 7 open `ownerPending` items. Ask the owner before docs/submission, since the README must state the final rules.
+  Start-up scripts in the scratchpad are stale, so never rerun an old one blindly (one flipped top10-ctr back to in-progress this session; restored).
+
 ## 2026-11-21 (5) — top10_ctr.csv (`agg/top10-ctr` = pass)
 - Done: internal/report (rank + CSV writer); the CLI writes top10_ctr.csv. Commit: see `git log -1`.
 - Proof: `bash init.sh` is green and gate [5] covers top10_ctr. The real output is identical to an awk ranking (4.77s, 2.1 MB).
@@ -32,11 +40,3 @@ move the oldest verbatim to docs/harness/session-handoff-archive.md.
   with malformed rows and testdata/golden/ in that feature so that gate [5] goes live.
 - Watch out: WSL's default shell is fish, so run scripts as `bash file.sh`. `internal/cli.run` only opens and stats the
   input; stream-parse plugs the reader in there.
-
-## 2026-11-21 (1) — harness bootstrapped, no code yet (`infra/cli-skeleton` = todo)
-- Done: harness files + git init. No Go code exists yet.
-- Proof: `bash init.sh`. The ledger lint passes; the go gates print PENDING until go.mod exists.
-- Next: `infra/cli-skeleton` → `agg/stream-parse`. Create testdata/sample.csv (include malformed rows)
-  and testdata/golden/ early so that gate [5] goes live.
-- Watch out: never commit ad_data.csv (1GB). The ownerPending items need the owner's answer before
-  agg/top10-* can pass. Using the defaults is fine, but keep the items listed.
