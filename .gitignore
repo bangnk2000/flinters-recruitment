@@ -1,0 +1,6 @@
+# 1GB dataset — never commit
+ad_data.csv
+ad_data.csv.zip
+
+# build output
+bin/
