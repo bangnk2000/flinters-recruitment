@@ -26,3 +26,7 @@ phần dòng lỗi làm như đề xuất, tôi muốn thêm 1 điều nữa đ�
 ---
 
 đã setting config hãy commit tiếp đi
+
+---
+
+Đọc AGENTS.md và làm theo Startup, bắt đầu feature agg/stream-parse

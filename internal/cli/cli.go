@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+
+	"adagg/internal/ingest"
 )
 
 // Exit codes returned by Run.
@@ -42,7 +45,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "aggregator: %v\n\n%s", err, usageText)
 		return ExitUsage
 	}
-	if err := run(cfg); err != nil {
+	if err := run(cfg, stderr); err != nil {
 		fmt.Fprintf(stderr, "aggregator: %v\n", err)
 		return ExitFault
 	}
@@ -69,7 +72,7 @@ func parseArgs(args []string) (config, error) {
 	return cfg, nil
 }
 
-func run(cfg config) error {
+func run(cfg config, stderr io.Writer) error {
 	in, err := os.Open(cfg.input)
 	if err != nil {
 		return fmt.Errorf("cannot read input: %w", err)
@@ -87,5 +90,18 @@ func run(cfg config) error {
 	if err := os.MkdirAll(cfg.output, 0o755); err != nil {
 		return fmt.Errorf("cannot create output directory: %w", err)
 	}
+
+	logPath := filepath.Join(cfg.output, ingest.MalformedLogFile)
+	malformed, err := ingest.CreateMalformedLog(logPath)
+	if err != nil {
+		return fmt.Errorf("cannot create malformed-row log: %w", err)
+	}
+	stats, parseErr := ingest.Parse(in, func(ingest.Record) {}, malformed.Write)
+	if err := errors.Join(parseErr, malformed.Close()); err != nil {
+		return fmt.Errorf("cannot process %s: %w", cfg.input, err)
+	}
+
+	fmt.Fprintf(stderr, "aggregator: %d rows processed, %d malformed rows skipped (see %s)\n",
+		stats.Rows, stats.Malformed, logPath)
 	return nil
 }

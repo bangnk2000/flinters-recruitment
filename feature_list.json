@@ -33,11 +33,28 @@
         "Memory-efficient on ~1GB input",
         "Malformed rows written to a file (owner, 2026-11-21)"
       ],
-      "status": "todo",
-      "evidence": "",
-      "testedAt": null,
+      "status": "pass",
+      "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 — jq lint, gofmt, vet, go test -race (ingest: TestParseRecord 21 cases, TestParseStream, TestParseHeaderErrors, TestParseStopsOnMalformedHandlerError, TestParseRecordDoesNotAllocate, MalformedLog tests; cli: 11 cases), build, gate [5] now live: bin/aggregator on testdata/sample.csv == testdata/golden/malformed_rows.csv. Runtime: `bin/aggregator --input testdata/sample.csv --output $T` -> exit 0, stderr \"aggregator: 7 rows processed, 6 malformed rows skipped (see $T/malformed_rows.csv)\". AC \"Handle malformed rows gracefully\" + \"Malformed rows written to a file\": malformed_rows.csv lists lines 8 invalid date, 9 \"expected 6 fields, got 5\", 10 empty line, 11 invalid clicks, 12 empty campaign_id, 13 invalid spend (line_number,reason,raw_line). AC \"Memory-efficient on ~1GB\": real ad_data.csv (CRLF) -> exit 0, \"26843544 rows processed, 0 malformed rows skipped\", wall 3.67s, max RSS 2048 KB (/usr/bin/time -v); BenchmarkParse 329 MB/s, 2 allocs per Parse call, 0 per row (AllocsPerRun test). Empty input / wrong header -> exit 1 (cli tests).",
+      "testedAt": "2026-11-21",
       "ci": null,
-      "ownerPending": []
+      "ownerPending": [
+        {
+          "item": "Missing/wrong header or empty file: fatal (exit 1) instead of per-row handling (brief silent)",
+          "since": "2026-11-21",
+          "options": [
+            "fatal exit 1 (agent default)",
+            "treat header as data, report rows malformed"
+          ]
+        },
+        {
+          "item": "spend with more than 2 decimals (brief: USD; real data max 2)",
+          "since": "2026-11-21",
+          "options": [
+            "malformed row (agent default)",
+            "round half-up to cents"
+          ]
+        }
+      ]
     },
     {
       "id": "agg/aggregate",

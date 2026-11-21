@@ -14,6 +14,14 @@ func TestRun(t *testing.T) {
 	if err := os.WriteFile(csvPath, []byte("campaign_id,date,impressions,clicks,spend,conversions\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	emptyPath := filepath.Join(dir, "empty.csv")
+	if err := os.WriteFile(emptyPath, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	badHeaderPath := filepath.Join(dir, "bad-header.csv")
+	if err := os.WriteFile(badHeaderPath, []byte("id,date\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	missingPath := filepath.Join(dir, "missing.csv")
 	newOutDir := filepath.Join(dir, "results", "nested")
 
@@ -32,7 +40,9 @@ func TestRun(t *testing.T) {
 		{"input missing", []string{"--input", missingPath, "--output", dir}, ExitFault, "", "no such file or directory"},
 		{"input is directory", []string{"--input", dir, "--output", dir}, ExitFault, "", "is a directory"},
 		{"output is a file", []string{"--input", csvPath, "--output", csvPath}, ExitFault, "", "cannot create output directory"},
-		{"success creates output dir", []string{"--input", csvPath, "--output", newOutDir}, ExitOK, "", ""},
+		{"empty input", []string{"--input", emptyPath, "--output", dir}, ExitFault, "", "input is empty"},
+		{"wrong header", []string{"--input", badHeaderPath, "--output", dir}, ExitFault, "", "unexpected header"},
+		{"success creates output dir", []string{"--input", csvPath, "--output", newOutDir}, ExitOK, "", "0 rows processed, 0 malformed rows skipped"},
 	}
 
 	for _, tc := range tests {
@@ -48,8 +58,8 @@ func TestRun(t *testing.T) {
 		})
 	}
 
-	if info, err := os.Stat(newOutDir); err != nil || !info.IsDir() {
-		t.Errorf("output dir %s not created: %v", newOutDir, err)
+	if _, err := os.Stat(filepath.Join(newOutDir, "malformed_rows.csv")); err != nil {
+		t.Errorf("malformed_rows.csv not created in %s: %v", newOutDir, err)
 	}
 }
 

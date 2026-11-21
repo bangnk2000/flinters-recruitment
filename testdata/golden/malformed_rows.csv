@@ -1,0 +1,7 @@
+line_number,reason,raw_line
+8,invalid date,"CMP005,2025-02-30,1000,10,5.00,1"
+9,"expected 6 fields, got 5","CMP006,2025-01-03,1000,10,5.00"
+10,empty line,
+11,invalid clicks,"CMP007,2025-01-03,1000,ten,5.00,1"
+12,empty campaign_id,",2025-01-03,1000,10,5.00,1"
+13,invalid spend,"CMP008,2025-01-03,1000,10,5.123,1"

@@ -25,3 +25,18 @@ Append-only, one block per session.
   - The output dir is created with MkdirAll.
   - The module is named `adagg`, which gives short import paths and no forge URL yet.
 - Issues: there is no git identity in WSL or Windows, so the session-1 and session-2 commits are not made yet.
+
+## 2026-11-21 — session 3
+- Goal: `agg/stream-parse`.
+- Done: `internal/ingest` (Parse, MalformedLog), CLI wiring with the stderr summary, testdata/sample.csv and
+  golden/malformed_rows.csv (gate [5] is live). The harness and skeleton commits were made after the owner set the git identity.
+- Decisions:
+  - Use a line-based `bufio.Reader.ReadSlice` with a manual comma split instead of `encoding/csv`. The data has
+    no quotes, `raw_line` needs the original bytes, and this gives 0 allocations per row.
+  - `Record.CampaignID` aliases the read buffer, and the aggregator must copy it.
+  - Line numbers are physical lines, with the header as line 1. A blank line counts as a malformed row.
+  - `malformed_rows.csv` is always written, holding only the header when there are no rejects.
+  - Two unchosen rules were added to `ownerPending`: header/empty input is fatal, and spend with more than 2 decimals is malformed.
+- Numbers: the real file has 26,843,544 rows, CRLF line endings, 50 campaigns, 0 malformed rows, and spend with ≤ 2 decimals.
+  A parse-only run took 3.67s wall time with max RSS 2048 KB. BenchmarkParse runs at 329 MB/s.
+- Issues: the Write tool turned the `﻿` escape into a raw BOM, which Go rejects. It now uses `"\xef\xbb\xbf"`.
