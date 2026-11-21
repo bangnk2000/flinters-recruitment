@@ -137,6 +137,28 @@
       "testedAt": "2026-11-21",
       "ci": null,
       "ownerPending": []
+    },
+    {
+      "id": "perf/parallel-parse",
+      "title": "Parallel parse",
+      "description": "Parse the input on N worker goroutines (default: all CPUs, --workers to override). A reader cuts the stream into fixed-size chunks on line boundaries from a bounded buffer pool; each worker folds rows into its own accumulator; the partial aggregates are merged at the end. Malformed rows keep exact physical line numbers and file order. Outputs must be byte-identical to the single-threaded run; memory stays bounded by the pool. Re-run the benchmark and update README numbers and results/.",
+      "tier": "standard",
+      "designDoc": null,
+      "dependencies": [
+        "perf/benchmark"
+      ],
+      "acceptance": [
+        "Parallel parse requested by owner (2026-11-21)",
+        "Outputs identical to the single-threaded run",
+        "Malformed rows keep exact line numbers and order",
+        "Bounded memory",
+        "Benchmark + README updated"
+      ],
+      "status": "pass",
+      "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 — gofmt, vet, go test -race (new: TestParseWorkersAgree 9 subtests = workers 1/2/8 x chunk 256/300/4096 on a generated 3000-line file mixing valid rows, every malformed kind, LF/CRLF, lines between maxLine and chunk and longer than a chunk, last line over-long without terminator — stats, malformed rows incl. line numbers and totals identical to the single-worker run; TestParseStopsOnMalformedHandlerError stops at the 3rd callback and drains without deadlock; TestParseHeaderOnly; TestMerge; cli --workers 0 -> exit 2, --workers 3 on sample -> exit 0), `go test -race -count=3 ./internal/ingest` clean, build, gate [5] golden diff with --workers 1 and --workers $(nproc). AC \"Outputs identical to the single-threaded run\" + \"exact line numbers and order\": `RUNS=5 bash scripts/benchmark.sh` -> \"parallel outputs are byte-identical to the single-thread reference\"; results/ unchanged vs the previous commit (git diff --quiet). AC \"Bounded memory\": maxrss 11008-11264 kB, VmHWM 11008 kB (pool 2x4 x 1 MiB), independent of file size. AC \"Benchmark + README updated\": docs/benchmark.log — --workers 1 wall 3.96 s; 4 workers 1.05/1.06/1.03/1.03/1.04 s (median 1.04 s, 3.8x); BenchmarkParse 333 -> 1056 MB/s; README numbers/decisions/tests/flags updated; docker image rebuilt, real-file run 1.78 s with outputs == results/.",
+      "testedAt": "2026-11-21",
+      "ci": null,
+      "ownerPending": []
     }
   ]
 }

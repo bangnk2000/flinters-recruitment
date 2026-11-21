@@ -1,4 +1,4 @@
-# aggregator benchmark, 2026-11-21T02:51:01Z, commit 4b6b021
+# aggregator benchmark, 2026-11-21T03:30:33Z, commit 7d872f7
 input : ad_data.csv, 1043304870 bytes
 cpu   : AMD Ryzen 7 7700 8-Core Processor, 4 logical CPUs available
 memory: 3.8Gi total
@@ -6,15 +6,20 @@ os    : Linux 6.6.87.2-microsoft-standard-WSL2
 go    : go1.25.1 linux/amd64
 note  : page cache is warm after the first read; dropping it needs root, so runs are warm-cache
 
-read only (cat > /dev/null): wall=0.16 s
+read only (cat > /dev/null): wall=1.17 s
+
+aggregator: 26843544 rows processed, 0 malformed rows skipped (see /tmp/tmp.cpzAHlM23u/malformed_rows.csv), 50 campaigns
+single-thread reference (--workers 1): wall=3.96 s user=3.63 s sys=0.42 s maxrss=4352 kB
 
 aggregator: 26843544 rows processed, 0 malformed rows skipped (see results/malformed_rows.csv), 50 campaigns
-run 1: wall=4.60 s user=4.14 s sys=0.16 s maxrss=2048 kB
+run 1 (--workers 4): wall=1.05 s user=3.71 s sys=0.12 s maxrss=11008 kB
 aggregator: 26843544 rows processed, 0 malformed rows skipped (see results/malformed_rows.csv), 50 campaigns
-run 2: wall=4.70 s user=4.28 s sys=0.11 s maxrss=2176 kB
+run 2 (--workers 4): wall=1.06 s user=3.80 s sys=0.07 s maxrss=11008 kB
 aggregator: 26843544 rows processed, 0 malformed rows skipped (see results/malformed_rows.csv), 50 campaigns
-run 3: wall=2.67 s user=4.24 s sys=0.34 s maxrss=2048 kB
+run 3 (--workers 4): wall=1.03 s user=3.69 s sys=0.08 s maxrss=11008 kB
 aggregator: 26843544 rows processed, 0 malformed rows skipped (see results/malformed_rows.csv), 50 campaigns
-run 4: wall=4.63 s user=4.17 s sys=0.17 s maxrss=2304 kB
+run 4 (--workers 4): wall=1.03 s user=3.67 s sys=0.08 s maxrss=11008 kB
 aggregator: 26843544 rows processed, 0 malformed rows skipped (see results/malformed_rows.csv), 50 campaigns
-run 5: wall=4.53 s user=4.11 s sys=0.11 s maxrss=2304 kB
+run 5 (--workers 4): wall=1.04 s user=3.70 s sys=0.09 s maxrss=11264 kB
+
+parallel outputs are byte-identical to the single-thread reference

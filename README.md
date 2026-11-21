@@ -13,8 +13,8 @@ The outputs from the real dataset are committed in [`results/`](results/).
 | | |
 |---|---|
 | Input | `ad_data.csv`: 1,043,304,870 bytes, 26,843,544 rows, 50 campaigns |
-| Processing time | **4.6 s** (median of 5 runs) |
-| Peak memory (RSS) | **~2.2 MB** (2048–2304 kB) |
+| Processing time | **1.04 s** with 4 workers (median of 5 runs); 3.96 s single-threaded (`--workers 1`) |
+| Peak memory (RSS) | **~11 MB** (11008–11264 kB), fixed by the buffer pool and independent of file size |
 | Runtime dependencies | none (Go standard library only) |
 
 Measured on an AMD Ryzen 7 7700 under WSL2 (4 vCPU, 3.8 GiB RAM) with Go 1.25.1. The full log is in
@@ -39,6 +39,7 @@ go build -o bin/aggregator ./cmd/aggregator
 |---|---|
 | `--input` | Path to the input CSV (required) |
 | `--output` | Directory for the result files. It is created if missing (required). |
+| `--workers` | Number of parsing goroutines (default: the number of CPUs) |
 
 The program writes these files to the output directory:
 
@@ -60,7 +61,7 @@ Exit codes:
 |---|---|
 | `0` | Success, or `--help` |
 | `1` | I/O or data fault: missing or unreadable input, empty file, wrong header, unwritable output |
-| `2` | Usage error: missing or unknown flag, or an unexpected argument |
+| `2` | Usage error: a missing or unknown flag, `--workers` below 1, or an unexpected argument |
 
 ### With Docker
 
@@ -75,27 +76,40 @@ docker run --rm -v "$PWD:/data" ad-aggregator --input /data/ad_data.csv --output
 go test -race ./...
 ```
 
-- **Unit tests:** parsing and every rejection reason, aggregation, ranking and tie-breaks, CSV formatting,
-  and the CLI exit codes. Allocation tests assert that parsing and aggregating a row allocate nothing.
+- **Unit tests:** parsing and every rejection reason, aggregation and merging, ranking and tie-breaks, CSV
+  formatting, and the CLI exit codes. Allocation tests assert that parsing and aggregating a row allocate
+  nothing.
+- **Parallel equivalence:** a generated file mixes valid rows, every kind of malformed row, LF and CRLF
+  line endings, and lines longer than a chunk. It is parsed with 1, 2 and 8 workers and with tiny chunk
+  sizes, so lines fall on every chunk boundary. Each run must produce exactly the single-worker stats,
+  malformed rows (line numbers included) and totals. All tests run under `-race`.
 - **End-to-end:** [`testdata/sample.csv`](testdata/sample.csv) has valid rows and one row for each kind of
   malformed row. The binary's output on that file must match [`testdata/golden/`](testdata/golden/) byte
   for byte; `init.sh` checks this.
 - **Real-data cross-check (during development):** for all 50 campaigns, the totals and both top-10 files
   matched an independent `awk` computation exactly.
 
-`bash init.sh` runs the full gate chain: gofmt, `go vet`, `go test -race`, build, and the golden-file diff.
+`bash init.sh` runs the full gate chain: gofmt, `go vet`, `go test -race`, build, and the golden-file diff
+with both `--workers 1` and all CPUs.
 To reproduce the benchmark, run `RUNS=5 bash scripts/benchmark.sh`.
 
 ## Libraries used
 
 None beyond the Go standard library: `bufio`, `bytes`, `encoding/csv` (for writing only), `flag`,
-`slices`, `strconv`.
+`slices`, `strconv`, `sync`.
 
 ## Design decisions
 
-- **One streaming pass, constant memory.** The input is read line by line through a fixed 64 KiB
-  `bufio.Reader`, and only one map entry per campaign is kept. Memory depends on the number of campaigns,
-  not the number of rows: 50 campaigns use about 2 MB for 26.8 M rows.
+- **One streaming pass, parallel parse, bounded memory.**
+  - A reader goroutine cuts the file into 1 MiB chunks that end on a line boundary. It carries a partial
+    last line over into the next chunk.
+  - N workers (one per CPU by default) parse the chunks. Each worker folds rows into its own per-campaign
+    map, so no locks are needed, and the maps are merged at the end.
+  - Chunk buffers come from a fixed pool of 2×N buffers. Memory therefore depends on the worker count and
+    the number of campaigns, never on the file size: about 11 MB for 26.8 M rows.
+- **Malformed rows stay exact under parallelism.** Each worker reports its malformed rows relative to its
+  chunk. A collector puts the chunks back in input order and turns those into absolute line numbers, so
+  `malformed_rows.csv` matches a single-threaded run byte for byte.
 - **No per-row allocation.** Lines are split on commas in place, and numbers are parsed straight from
   bytes. The campaign ID is copied only the first time it is seen (`m[string(b)]` lookups don't allocate).
   Tests enforce this with `testing.AllocsPerRun`.
@@ -122,16 +136,16 @@ None beyond the Go standard library: `bufio`, `bytes`, `encoding/csv` (for writi
     precision. In the real data all ten top-CTR campaigns print as `0.0275`, but their full-precision
     order is preserved.
   - CPA is an empty cell when there are no conversions. This can only happen in `top10_ctr.csv`.
-- **Single-threaded on purpose.** Reading the file alone takes 0.16 s, so the run is CPU-bound in
-  parsing. A parallel parse could be about 3× faster on 4 cores, but it would need chunked reading and
-  ordered merging of malformed-row line numbers. At 4.6 s and 2 MB, the simpler design was kept.
+- **Why parallel.** Reading the file alone takes 0.16 s with a warm page cache and 1.2 s with a cold one,
+  so the run is CPU-bound in parsing. On 4 cores the parse is 3.8× faster: 1.04 s instead of 3.96 s. The cost is a fixed 8 MiB
+  buffer pool. `--workers 1` gives the single-threaded behaviour.
 
 ## Project layout
 
 ```
 cmd/aggregator/      main: delegates to internal/cli
 internal/cli/        flags, path checks, exit codes, wiring
-internal/ingest/     streaming parser + malformed-row log
+internal/ingest/     row validation, parallel chunk pipeline, malformed-row log
 internal/agg/        per-campaign totals, CTR, CPA
 internal/report/     top-10 ranking + CSV writer
 testdata/            sample input + golden outputs

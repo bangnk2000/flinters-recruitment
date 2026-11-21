@@ -3,9 +3,55 @@ package ingest
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"math/rand/v2"
+	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+// collector records campaign IDs in the order its worker saw them.
+type collector struct{ ids []string }
+
+func (c *collector) Add(r Record) { c.ids = append(c.ids, string(r.CampaignID)) }
+
+// summer totals records per campaign, like the real aggregator.
+type summer struct{ totals map[string][4]int64 }
+
+func newSummer() *summer { return &summer{totals: make(map[string][4]int64)} }
+
+func (s *summer) Add(r Record) {
+	t := s.totals[string(r.CampaignID)]
+	s.totals[string(r.CampaignID)] = [4]int64{t[0] + r.Impressions, t[1] + r.Clicks, t[2] + r.SpendCents, t[3] + r.Conversions}
+}
+
+type parseOutcome struct {
+	stats     Stats
+	malformed []Malformed
+	totals    map[string][4]int64
+}
+
+func runParse(t *testing.T, input string, workers int, lim limits) parseOutcome {
+	t.Helper()
+	var out parseOutcome
+	accs, stats, err := parse(strings.NewReader(input), workers, lim, newSummer, func(m Malformed) error {
+		out.malformed = append(out.malformed, m)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("parse(workers=%d, %+v): %v", workers, lim, err)
+	}
+	out.stats = stats
+	out.totals = make(map[string][4]int64)
+	for _, acc := range accs {
+		for id, v := range acc.totals {
+			t := out.totals[id]
+			out.totals[id] = [4]int64{t[0] + v[0], t[1] + v[1], t[2] + v[2], t[3] + v[3]}
+		}
+	}
+	return out
+}
 
 func TestParseRecord(t *testing.T) {
 	tests := []struct {
@@ -57,12 +103,10 @@ func TestParseStream(t *testing.T) {
 		longLine + "\n" + // line 5: too long
 		"CMP001,2025-01-02,200,20,2.25,2" // line 6: no trailing newline
 
-	var gotIDs []string
 	var gotMalformed []Malformed
-	stats, err := Parse(strings.NewReader(input),
-		func(r Record) { gotIDs = append(gotIDs, string(r.CampaignID)) },
+	accs, stats, err := Parse(strings.NewReader(input), 1,
+		func() *collector { return &collector{} },
 		func(m Malformed) error {
-			m.Raw = bytes.Clone(m.Raw)
 			gotMalformed = append(gotMalformed, m)
 			return nil
 		})
@@ -73,27 +117,77 @@ func TestParseStream(t *testing.T) {
 	if stats != (Stats{Rows: 2, Malformed: 3}) {
 		t.Errorf("stats = %+v, want {Rows:2 Malformed:3}", stats)
 	}
-	if strings.Join(gotIDs, ",") != "CMP001,CMP001" {
-		t.Errorf("records = %v, want [CMP001 CMP001]", gotIDs)
+	if len(accs) != 1 || strings.Join(accs[0].ids, ",") != "CMP001,CMP001" {
+		t.Errorf("records = %v, want one accumulator with [CMP001 CMP001]", accs)
 	}
-	wantMalformed := []struct {
-		line   int64
-		reason string
-		raw    string
-	}{
-		{3, "empty line", ""},
-		{4, "invalid impressions", "CMP002,2025-01-01,x,10,1.50,1"},
-		{5, "line longer than 65536 bytes", longLine[:rawPrefixLen]},
+	want := []Malformed{
+		{Line: 3, Reason: "empty line", Raw: []byte{}},
+		{Line: 4, Reason: "invalid impressions", Raw: []byte("CMP002,2025-01-01,x,10,1.50,1")},
+		{Line: 5, Reason: "line longer than 65536 bytes", Raw: []byte(longLine[:rawPrefixLen])},
 	}
-	if len(gotMalformed) != len(wantMalformed) {
-		t.Fatalf("got %d malformed rows, want %d: %+v", len(gotMalformed), len(wantMalformed), gotMalformed)
+	if !reflect.DeepEqual(gotMalformed, want) {
+		t.Errorf("malformed =\n%.200q\nwant\n%.200q", gotMalformed, want)
 	}
-	for i, w := range wantMalformed {
-		g := gotMalformed[i]
-		if g.Line != w.line || g.Reason != w.reason || string(g.Raw) != w.raw {
-			t.Errorf("malformed[%d] = {%d %q %.40q}, want {%d %q %.40q}", i, g.Line, g.Reason, g.Raw, w.line, w.reason, w.raw)
+}
+
+// TestParseWorkersAgree is the safety net for the parallel pipeline: any number
+// of workers and any chunk size must give exactly the single-worker result, with
+// rows, line terminators and over-long lines falling on every chunk boundary.
+func TestParseWorkersAgree(t *testing.T) {
+	input := generatedInput(3000)
+	const maxLine = 48
+	want := runParse(t, input, 1, limits{chunkSize: 1 << 20, maxLine: maxLine})
+	if want.stats.Malformed == 0 || want.stats.Rows == 0 || len(want.totals) == 0 {
+		t.Fatalf("generated input is not mixed enough: %+v", want.stats)
+	}
+
+	for _, workers := range []int{1, 2, 8} {
+		for _, chunkSize := range []int{rawPrefixLen, 300, 4096} {
+			t.Run(fmt.Sprintf("workers=%d/chunk=%d", workers, chunkSize), func(t *testing.T) {
+				got := runParse(t, input, workers, limits{chunkSize: chunkSize, maxLine: maxLine})
+				if got.stats != want.stats {
+					t.Errorf("stats = %+v, want %+v", got.stats, want.stats)
+				}
+				if !reflect.DeepEqual(got.malformed, want.malformed) {
+					t.Errorf("malformed rows differ from the single-worker run (%d vs %d rows)", len(got.malformed), len(want.malformed))
+				}
+				if !reflect.DeepEqual(got.totals, want.totals) {
+					t.Errorf("totals = %v, want %v", got.totals, want.totals)
+				}
+			})
 		}
 	}
+}
+
+// generatedInput builds a deterministic file mixing valid rows with every kind
+// of malformed row, LF and CRLF terminators, and over-long lines; the last line
+// is over-long and has no terminator.
+func generatedInput(lines int) string {
+	rng := rand.New(rand.NewPCG(1, 2))
+	var b strings.Builder
+	b.WriteString(Header + "\n")
+	for range lines {
+		switch rng.IntN(20) {
+		case 0:
+			// empty line
+		case 1:
+			b.WriteString("CMP01,2025-01-01,1,1")
+		case 2:
+			b.WriteString(strings.Repeat("x", 60)) // between maxLine and the chunk size
+		case 3:
+			b.WriteString(strings.Repeat("y", 700)) // longer than the small chunks
+		default:
+			fmt.Fprintf(&b, "CMP%02d,2025-01-%02d,%d,%d,%d.%02d,%d", rng.IntN(7), 1+rng.IntN(28),
+				rng.IntN(100000), rng.IntN(1000), rng.IntN(1000), rng.IntN(100), rng.IntN(100))
+		}
+		if rng.IntN(2) == 0 {
+			b.WriteString("\r\n")
+		} else {
+			b.WriteString("\n")
+		}
+	}
+	b.WriteString(strings.Repeat("z", 700))
+	return b.String()
 }
 
 func TestParseHeaderErrors(t *testing.T) {
@@ -105,10 +199,11 @@ func TestParseHeaderErrors(t *testing.T) {
 		{"empty input", "", ErrEmptyInput.Error()},
 		{"wrong header", "id,date,impressions,clicks,spend,conversions\n", "unexpected header"},
 		{"data without header", "CMP001,2025-01-01,100,10,1.50,1\n", "unexpected header"},
+		{"huge first line", strings.Repeat("h", maxHeaderBytes+1) + "\n", "first line is longer than"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := Parse(strings.NewReader(tc.input), func(Record) {}, func(Malformed) error { return nil })
+			_, _, err := Parse(strings.NewReader(tc.input), 2, newSummer, func(Malformed) error { return nil })
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 				t.Errorf("err = %v, want it to contain %q", err, tc.wantErr)
 			}
@@ -116,15 +211,31 @@ func TestParseHeaderErrors(t *testing.T) {
 	}
 }
 
+func TestParseHeaderOnly(t *testing.T) {
+	got := runParse(t, Header+"\r\n", 4, limits{chunkSize: defaultChunkSize, maxLine: maxLineBytes})
+	if got.stats != (Stats{}) || len(got.malformed) != 0 || len(got.totals) != 0 {
+		t.Errorf("header-only input gave %+v", got)
+	}
+}
+
+// TestParseStopsOnMalformedHandlerError also proves the pipeline shuts down
+// (no goroutine stays blocked) when the collector gives up mid-stream.
 func TestParseStopsOnMalformedHandlerError(t *testing.T) {
 	sentinel := errors.New("disk full")
-	input := Header + "\nbad\nCMP001,2025-01-01,100,10,1.50,1\n"
-	stats, err := Parse(strings.NewReader(input), func(Record) {}, func(Malformed) error { return sentinel })
+	input := Header + "\n" + strings.Repeat("bad\nCMP001,2025-01-01,100,10,1.50,1\n", 5000)
+	calls := 0
+	_, _, err := parse(strings.NewReader(input), 4, limits{chunkSize: 256, maxLine: 48}, newSummer,
+		func(Malformed) error {
+			if calls++; calls == 3 {
+				return sentinel
+			}
+			return nil
+		})
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("err = %v, want %v", err, sentinel)
 	}
-	if stats.Rows != 0 {
-		t.Errorf("rows parsed after handler error: %d", stats.Rows)
+	if calls != 3 {
+		t.Errorf("onMalformed called %d times, want it to stop at 3", calls)
 	}
 }
 
@@ -140,19 +251,27 @@ func TestParseRecordDoesNotAllocate(t *testing.T) {
 	}
 }
 
+type discard struct{}
+
+func (discard) Add(Record) {}
+
 func BenchmarkParse(b *testing.B) {
 	var buf bytes.Buffer
 	buf.WriteString(Header + "\r\n")
-	for i := 0; i < 100_000; i++ {
+	for range 400_000 {
 		buf.WriteString("CMP020,2025-05-03,24465,764,1394.62,42\r\n")
 	}
 	data := buf.Bytes()
-	b.SetBytes(int64(len(data)))
-	b.ReportAllocs()
-	for b.Loop() {
-		if _, err := Parse(bytes.NewReader(data), func(Record) {}, func(Malformed) error { return nil }); err != nil {
-			b.Fatal(err)
-		}
+	for _, workers := range []int{1, runtime.GOMAXPROCS(0)} {
+		b.Run(fmt.Sprintf("workers=%d", workers), func(b *testing.B) {
+			b.SetBytes(int64(len(data)))
+			b.ReportAllocs()
+			for b.Loop() {
+				if _, _, err := Parse(bytes.NewReader(data), workers, func() discard { return discard{} }, func(Malformed) error { return nil }); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
 	}
 }
 

@@ -50,3 +50,7 @@ phần dòng lỗi làm như đề xuất, tôi muốn thêm 1 điều nữa đ�
 ---
 
 giữ mặc định hết, bắt đầu feature docs/submission
+
+---
+
+Đọc AGENTS.md và làm thêm phần song song hoá phần parse

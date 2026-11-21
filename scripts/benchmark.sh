@@ -25,8 +25,15 @@ mkdir -p docs results
   echo
   /usr/bin/time -f "read only (cat > /dev/null): wall=%e s" cat "$input" > /dev/null
   echo
+  ref="$(mktemp -d)"
+  /usr/bin/time -f "single-thread reference (--workers 1): wall=%e s user=%U s sys=%S s maxrss=%M kB" \
+    ./bin/aggregator --input "$input" --output "$ref" --workers 1
+  echo
   for i in $(seq 1 "$runs"); do
-    /usr/bin/time -f "run $i: wall=%e s user=%U s sys=%S s maxrss=%M kB" \
+    /usr/bin/time -f "run $i (--workers $(nproc)): wall=%e s user=%U s sys=%S s maxrss=%M kB" \
       ./bin/aggregator --input "$input" --output results
   done
+  echo
+  diff -r -q "$ref" results && echo "parallel outputs are byte-identical to the single-thread reference"
+  rm -rf "$ref"
 } 2>&1 | tee "$log"

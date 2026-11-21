@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"adagg/internal/agg"
 	"adagg/internal/ingest"
@@ -22,18 +23,20 @@ const (
 	ExitUsage = 2 // invalid command line
 )
 
-const usageText = `Usage: aggregator --input <file.csv> --output <dir>
+const usageText = `Usage: aggregator --input <file.csv> --output <dir> [--workers <n>]
 
 Aggregates ad performance per campaign_id and writes top-10 CTR / CPA reports.
 
 Flags:
-  --input   path to the input CSV file (required)
-  --output  directory for the result files, created if missing (required)
+  --input    path to the input CSV file (required)
+  --output   directory for the result files, created if missing (required)
+  --workers  number of parsing goroutines (default: number of CPUs)
 `
 
 type config struct {
-	input  string
-	output string
+	input   string
+	output  string
+	workers int
 }
 
 // Run executes the CLI with args (without the program name) and returns the exit code.
@@ -60,6 +63,7 @@ func parseArgs(args []string) (config, error) {
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&cfg.input, "input", "", "")
 	fs.StringVar(&cfg.output, "output", "", "")
+	fs.IntVar(&cfg.workers, "workers", runtime.GOMAXPROCS(0), "")
 	if err := fs.Parse(args); err != nil {
 		return config{}, err
 	}
@@ -70,6 +74,8 @@ func parseArgs(args []string) (config, error) {
 		return config{}, errors.New("--input is required")
 	case cfg.output == "":
 		return config{}, errors.New("--output is required")
+	case cfg.workers < 1:
+		return config{}, errors.New("--workers must be at least 1")
 	}
 	return cfg, nil
 }
@@ -98,12 +104,15 @@ func run(cfg config, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("cannot create malformed-row log: %w", err)
 	}
-	aggregator := agg.New()
-	stats, parseErr := ingest.Parse(in, aggregator.Add, malformed.Write)
+	partials, stats, parseErr := ingest.Parse(in, cfg.workers, agg.New, malformed.Write)
 	if err := errors.Join(parseErr, malformed.Close()); err != nil {
 		return fmt.Errorf("cannot process %s: %w", cfg.input, err)
 	}
-	campaigns := aggregator.Campaigns()
+	total := agg.New()
+	for _, p := range partials {
+		total.Merge(p)
+	}
+	campaigns := total.Campaigns()
 
 	reports := []struct {
 		file   string

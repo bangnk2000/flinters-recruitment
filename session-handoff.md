@@ -2,6 +2,15 @@
 Newest first. On resume read ONLY the first entry. Close: prepend one entry, keep ≤ 5,
 move the oldest verbatim to docs/harness/session-handoff-archive.md.
 
+## 2026-11-21 (9) — parallel parse, 3.8× faster (`perf/parallel-parse` = pass)
+- Done: ingest pipeline (chunk reader → N workers → ordered collector), agg.Merge, `--workers`, README/benchmark updated.
+  NOT pushed: the owner decides when to push.
+- Proof: init.sh is green (goldens with 1 and nproc workers). TestParseWorkersAgree passes and -race is clean. Real file: 1.04s against 3.96s, RSS ~11 MB,
+  and outputs are byte-identical.
+- Next: nothing in the ledger. The owner may push (`git push`); the remote is bangnk2000/flinters-recruitment.
+- Watch out: the owner removed the repo-operation prompts from PROMPTS.md and force-pushed, so keep only development prompts there.
+  Any parse change must keep TestParseWorkersAgree green.
+
 ## 2026-11-21 (8) — submission docs; every entry passes (`docs/submission` = pass)
 - Done: README.md, docs/brief.md (moved), Dockerfile, .dockerignore. Owner decisions are recorded and ownerPending is cleared. Commit: see `git log -1`.
 - Proof: init.sh is green, all 11 README links resolve, `--help` gives exit 0, and the Docker image (8.74 MB) on the real file
@@ -31,11 +40,3 @@ move the oldest verbatim to docs/harness/session-handoff-archive.md.
 - Next: `agg/top10-cpa`. Add TopByCPA (exclude conversions = 0, CPA asc, id asc), `TopCPAFile`, a golden file,
   and the awk cross-check (ctr-check pattern, progress session 5).
 - Watch out: at 4 dp, all 10 real top-CTR rows print 0.0275. The owner should decide the format (`ownerPending` on top10-ctr).
-
-## 2026-11-21 (4) — per-campaign aggregation (`agg/aggregate` = pass)
-- Done: internal/agg + CLI wiring (the summary prints the campaign count). Commit: see `git log -1`.
-- Proof: `bash init.sh` is green. The 50 real-file totals are identical to an awk sum. Real run: 4.47s, RSS ~2 MB.
-- Next: `agg/top10-ctr`, then `agg/top10-cpa`. `campaigns := aggregator.Campaigns()` in cli.go is ready to rank.
-  Add `testdata/golden/top10_*.csv` so that gate [5] covers them.
-- Watch out: top10-ctr has 3 `ownerPending` items (tie-break, number format, CPA null rendering). Use the defaults
-  unless the owner answers. To cross-check top10 against awk, reuse the sum script from progress session 4.

@@ -58,10 +58,27 @@ func (a *Aggregator) Add(r ingest.Record) {
 		t = &Totals{}
 		a.byID[string(r.CampaignID)] = t
 	}
-	t.Impressions += r.Impressions
-	t.Clicks += r.Clicks
-	t.SpendCents += r.SpendCents
-	t.Conversions += r.Conversions
+	t.add(Totals{Impressions: r.Impressions, Clicks: r.Clicks, SpendCents: r.SpendCents, Conversions: r.Conversions})
+}
+
+// Merge folds every campaign of other into a. Use it to combine the partial
+// aggregates built by parallel workers.
+func (a *Aggregator) Merge(other *Aggregator) {
+	for id, o := range other.byID {
+		t, ok := a.byID[id]
+		if !ok {
+			t = &Totals{}
+			a.byID[id] = t
+		}
+		t.add(*o)
+	}
+}
+
+func (t *Totals) add(o Totals) {
+	t.Impressions += o.Impressions
+	t.Clicks += o.Clicks
+	t.SpendCents += o.SpendCents
+	t.Conversions += o.Conversions
 }
 
 // Campaigns returns every campaign's totals, ordered by campaign ID.

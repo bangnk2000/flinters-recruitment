@@ -1,17 +1,14 @@
-// Package ingest streams ad-performance CSV rows and validates each one.
+// Package ingest streams ad-performance CSV rows, validates each one, and folds
+// the valid rows into caller-supplied accumulators on several goroutines.
 //
-// The input is read line by line through a fixed-size buffer, so memory use does
-// not grow with file size, and a valid row is parsed without heap allocation.
 // Fields are split on commas without quote handling: the schema has no free-text
-// columns, and a quoted row is reported as malformed rather than misread.
+// columns, and a quoted row is reported as malformed rather than misread. A valid
+// row is parsed without heap allocation.
 package ingest
 
 import (
-	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"time"
 )
 
@@ -20,16 +17,12 @@ const Header = "campaign_id,date,impressions,clicks,spend,conversions"
 
 const (
 	numFields    = 6
-	maxLineBytes = 64 * 1024
 	maxCountLen  = 18 // digits that always fit in an int64
 	rawPrefixLen = 256
 )
 
-// ErrEmptyInput is returned when the input has no header line.
-var ErrEmptyInput = errors.New("input is empty")
-
 // Record is one valid data row. CampaignID aliases the read buffer and is only
-// valid during the onRecord call; copy it to keep it.
+// valid during the Accumulator.Add call; copy it to keep it.
 type Record struct {
 	CampaignID  []byte
 	Impressions int64
@@ -39,98 +32,12 @@ type Record struct {
 }
 
 // Malformed is a rejected data row. Line is the 1-based physical line number
-// (the header is line 1). Raw aliases the read buffer, like Record.CampaignID.
+// (the header is line 1). Raw is the line without its terminator, cut to its
+// first 256 bytes when the line is too long; it is owned by the receiver.
 type Malformed struct {
 	Line   int64
 	Reason string
 	Raw    []byte
-}
-
-// Stats counts the data rows seen by Parse.
-type Stats struct {
-	Rows      int64 // valid rows passed to onRecord
-	Malformed int64 // rows passed to onMalformed
-}
-
-// Parse reads the header, then calls onRecord for every valid row and
-// onMalformed for every invalid one. An error from onMalformed stops parsing.
-func Parse(r io.Reader, onRecord func(Record), onMalformed func(Malformed) error) (Stats, error) {
-	br := bufio.NewReaderSize(r, maxLineBytes)
-	if err := readHeader(br); err != nil {
-		return Stats{}, err
-	}
-
-	var stats Stats
-	for lineNo := int64(2); ; lineNo++ {
-		line, tooLong, err := readLine(br)
-		if errors.Is(err, io.EOF) {
-			return stats, nil
-		}
-		if err != nil {
-			return stats, fmt.Errorf("read line %d: %w", lineNo, err)
-		}
-
-		var rec Record
-		var reason string
-		if tooLong {
-			reason = fmt.Sprintf("line longer than %d bytes", maxLineBytes)
-		} else {
-			rec, reason = parseRecord(line)
-		}
-		if reason != "" {
-			stats.Malformed++
-			if err := onMalformed(Malformed{Line: lineNo, Reason: reason, Raw: line}); err != nil {
-				return stats, err
-			}
-			continue
-		}
-		stats.Rows++
-		onRecord(rec)
-	}
-}
-
-func readHeader(br *bufio.Reader) error {
-	line, _, err := readLine(br)
-	if errors.Is(err, io.EOF) {
-		return ErrEmptyInput
-	}
-	if err != nil {
-		return fmt.Errorf("read header: %w", err)
-	}
-	line = bytes.TrimPrefix(line, []byte("\xef\xbb\xbf"))
-	if string(line) != Header {
-		return fmt.Errorf("unexpected header %q, want %q", line, Header)
-	}
-	return nil
-}
-
-// readLine returns the next line without its "\n" or "\r\n" terminator. A line
-// longer than the buffer is consumed whole and returned as a copy of its first
-// rawPrefixLen bytes with tooLong set. It returns io.EOF only when no bytes remain.
-func readLine(br *bufio.Reader) (line []byte, tooLong bool, err error) {
-	line, err = br.ReadSlice('\n')
-	if errors.Is(err, bufio.ErrBufferFull) {
-		prefix := bytes.Clone(line[:rawPrefixLen])
-		for errors.Is(err, bufio.ErrBufferFull) {
-			_, err = br.ReadSlice('\n')
-		}
-		if err != nil && !errors.Is(err, io.EOF) {
-			return nil, true, err
-		}
-		return prefix, true, nil
-	}
-	if errors.Is(err, io.EOF) {
-		if len(line) == 0 {
-			return nil, false, io.EOF
-		}
-		err = nil // last line has no terminator
-	}
-	if err != nil {
-		return nil, false, err
-	}
-	line = bytes.TrimSuffix(line, []byte("\n"))
-	line = bytes.TrimSuffix(line, []byte("\r"))
-	return line, false, nil
 }
 
 // parseRecord validates one data line. A non-empty reason means the row is malformed.

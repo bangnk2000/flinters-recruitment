@@ -17,9 +17,13 @@ func TestAggregateSample(t *testing.T) {
 	}
 	defer f.Close()
 
-	a := New()
-	if _, err := ingest.Parse(f, a.Add, func(ingest.Malformed) error { return nil }); err != nil {
+	partials, _, err := ingest.Parse(f, 3, New, func(ingest.Malformed) error { return nil })
+	if err != nil {
 		t.Fatal(err)
+	}
+	a := New()
+	for _, p := range partials {
+		a.Merge(p)
 	}
 
 	want := []Campaign{
@@ -49,6 +53,26 @@ func TestAddCopiesCampaignID(t *testing.T) {
 	got := a.Campaigns()
 	if len(got) != 1 || got[0].ID != "CMP001" || got[0].Impressions != 3 {
 		t.Errorf("campaigns = %+v, want one CMP001 with 3 impressions", got)
+	}
+}
+
+func TestMerge(t *testing.T) {
+	a, b := New(), New()
+	a.Add(ingest.Record{CampaignID: []byte("CMP001"), Impressions: 10, Clicks: 1, SpendCents: 100, Conversions: 1})
+	b.Add(ingest.Record{CampaignID: []byte("CMP001"), Impressions: 5, Clicks: 2, SpendCents: 50, Conversions: 0})
+	b.Add(ingest.Record{CampaignID: []byte("CMP002"), Impressions: 7})
+	a.Merge(b)
+
+	want := []Campaign{
+		{"CMP001", Totals{Impressions: 15, Clicks: 3, SpendCents: 150, Conversions: 1}},
+		{"CMP002", Totals{Impressions: 7}},
+	}
+	got := a.Campaigns()
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("merged = %+v, want %+v", got, want)
+	}
+	if b.Campaigns()[0].Impressions != 5 {
+		t.Error("Merge modified its argument")
 	}
 }
 

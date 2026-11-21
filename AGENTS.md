@@ -38,8 +38,9 @@ Toolchain: ledger-store=file agent-runtime=claude-code forge=github ci=none
   - Ties on CTR or CPA are broken by campaign_id ascending.
   - Format: CTR 4 dp, CPA and spend 2 dp.
   - An empty CPA cell means there are no conversions.
-  - The parse stays single-threaded.
   README §Design decisions states these rules.
+- Owner decision (2026-11-21, later): parallelise the parse (`perf/parallel-parse`). The default is all CPUs, and
+  `--workers 1` stays single-threaded. Outputs must stay byte-identical; TestParseWorkersAgree guards this.
 - Any rule you choose without the owner's decision goes in the entry's `ownerPending`, never only in
   prose.
 - `ad_data.csv` (~1GB) is never committed. Tests use `testdata/`. Only `perf/benchmark` reads the real file.

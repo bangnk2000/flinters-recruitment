@@ -94,3 +94,28 @@ Append-only, one block per session.
   recorded in AGENTS.md Working Rules and README §Design decisions.
 - Numbers: the Docker run on the real file took 5.30s, and its outputs are byte-identical to results/.
 - State: all 7 ledger entries pass. The repo is ready to push to GitHub and submit.
+
+## 2026-11-21 — session 9
+- Goal: `perf/parallel-parse` (new entry). The owner reversed the earlier single-thread default.
+- Done:
+  - `internal/ingest/pipeline.go` adds a reader that cuts 1 MiB line-aligned chunks from a 2×N buffer pool, N workers
+    with their own accumulator each, and an in-order collector for malformed rows.
+  - Parse is now generic over the Accumulator, and `agg.Merge` was added.
+  - CLI `--workers` (default GOMAXPROCS).
+  - init.sh gate [5] diffs the goldens with 1 worker and with nproc workers.
+  - The benchmark script adds a `--workers 1` reference and a byte-identity check.
+  - README and AGENTS.md updated.
+- Decisions:
+  - Malformed line numbers are chunk-relative and made absolute in seq order, so the output is identical to
+    single-threaded.
+  - A line longer than a chunk is skipped by the reader and reported via a `tooLong` chunk.
+  - The header is read through a 4 KiB bufio buffer before the pipeline starts.
+  - The repo-op prompts that the owner removed from PROMPTS.md (reset + force-push) are not re-added.
+- Numbers (real 1 GB file):
+  - The 4-worker median is 1.04s, against 3.96s for `--workers 1`, a 3.8× speed-up.
+  - maxrss is 11008–11264 kB and VmHWM is 11008 kB.
+  - Outputs are byte-identical to the reference and to the committed results/.
+  - In-memory bench: 1056 MB/s against 333 MB/s.
+  - The Docker run took 1.78s.
+- Tests: TestParseWorkersAgree (workers 1/2/8 × chunk 256/300/4096 on a generated mixed file) and the stop/drain test.
+  `-race -count=3` is clean.

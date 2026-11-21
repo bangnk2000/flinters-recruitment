@@ -21,9 +21,11 @@ else
   echo "[5/6] runtime proof (testdata/sample.csv vs golden)"
   if [ -f testdata/sample.csv ] && [ -d testdata/golden ]; then
     tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
-    ./bin/aggregator --input testdata/sample.csv --output "$tmp"
-    for f in testdata/golden/*.csv; do
-      diff -u "$f" "$tmp/$(basename "$f")" || { echo "FAIL: $(basename "$f") differs from golden"; exit 1; }
+    for workers in 1 "$(nproc)"; do
+      ./bin/aggregator --input testdata/sample.csv --output "$tmp/w$workers" --workers "$workers"
+      for f in testdata/golden/*.csv; do
+        diff -u "$f" "$tmp/w$workers/$(basename "$f")" || { echo "FAIL: $(basename "$f") differs from golden (--workers $workers)"; exit 1; }
+      done
     done
   else
     echo "  PENDING: testdata/sample.csv + testdata/golden/ not created yet"

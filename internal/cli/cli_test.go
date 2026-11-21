@@ -43,6 +43,8 @@ func TestRun(t *testing.T) {
 		{"empty input", []string{"--input", emptyPath, "--output", dir}, ExitFault, "", "input is empty"},
 		{"wrong header", []string{"--input", badHeaderPath, "--output", dir}, ExitFault, "", "unexpected header"},
 		{"success creates output dir", []string{"--input", csvPath, "--output", newOutDir}, ExitOK, "", "0 rows processed, 0 malformed rows skipped"},
+		{"zero workers", []string{"--input", csvPath, "--output", dir, "--workers", "0"}, ExitUsage, "", "--workers must be at least 1"},
+		{"three workers", []string{"--input", "../../testdata/sample.csv", "--output", dir, "--workers", "3"}, ExitOK, "", "7 rows processed, 6 malformed rows skipped"},
 		{"summary counts campaigns", []string{"--input", "../../testdata/sample.csv", "--output", dir}, ExitOK, "", "malformed_rows.csv), 4 campaigns"},
 	}
 
