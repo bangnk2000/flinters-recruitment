@@ -2,6 +2,14 @@
 Newest first. On resume read ONLY the first entry. Close: prepend one entry, keep ≤ 5,
 move the oldest verbatim to docs/harness/session-handoff-archive.md.
 
+## 2026-11-21 (4) — per-campaign aggregation (`agg/aggregate` = pass)
+- Done: internal/agg + CLI wiring (the summary prints the campaign count). Commit: see `git log -1`.
+- Proof: `bash init.sh` is green. The 50 real-file totals are identical to an awk sum. Real run: 4.47s, RSS ~2 MB.
+- Next: `agg/top10-ctr`, then `agg/top10-cpa`. `campaigns := aggregator.Campaigns()` in cli.go is ready to rank.
+  Add `testdata/golden/top10_*.csv` so that gate [5] covers them.
+- Watch out: top10-ctr has 3 `ownerPending` items (tie-break, number format, CPA null rendering). Use the defaults
+  unless the owner answers. To cross-check top10 against awk, reuse the sum script from progress session 4.
+
 ## 2026-11-21 (3) — streaming parser + malformed log (`agg/stream-parse` = pass)
 - Done: internal/ingest (Parse, MalformedLog), CLI summary on stderr, sample + golden. Commit: see `git log -1`.
 - Proof: `bash init.sh` is green and gate [5] diffs the golden. The real 1GB file took 3.67s with max RSS 2 MB and 0 malformed rows.

@@ -30,3 +30,7 @@ phần dòng lỗi làm như đề xuất, tôi muốn thêm 1 điều nữa đ�
 ---
 
 Đọc AGENTS.md và làm theo Startup, bắt đầu feature agg/stream-parse
+
+---
+
+Đọc AGENTS.md và làm theo Startup, bắt đầu feature agg/aggregate

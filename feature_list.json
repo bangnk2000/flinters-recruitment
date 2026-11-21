@@ -69,9 +69,9 @@
         "Aggregate by campaign_id: totals, CTR, CPA (null if conversions = 0)",
         "Correct results, matching expected values precisely"
       ],
-      "status": "todo",
-      "evidence": "",
-      "testedAt": null,
+      "status": "pass",
+      "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 — jq lint, gofmt, vet, go test -race (agg: TestAggregateSample, TestAddCopiesCampaignID, TestAddDoesNotAllocateForKnownCampaign, TestDerivedMetrics 3 cases; cli: 12 cases), build, gate [5] golden diff. AC \"Aggregate by campaign_id: totals, CTR, CPA (null if conversions = 0)\": TestAggregateSample sums testdata/sample.csv to CMP001 26000/640/9370c/27 … CMP004 9000/90/2000c/0 (hand-computed); TestDerivedMetrics: brief row CTR 0.05 CPA 20.0008, zero conversions -> CPA ok=false, zero impressions -> CTR 0. AC \"Correct results, matching expected values precisely\": real ad_data.csv totals for all 50 campaigns (impressions, clicks, spend cents, conversions) diff-identical to an independent awk sum (e.g. CMP001 13702609739/376766821/39582525210c/20450945). Runtime: sample -> exit 0, stderr \"... 6 malformed rows skipped (see <out>/malformed_rows.csv), 4 campaigns\"; real file -> exit 0, aggregator: 26843544 rows processed, 0 malformed rows skipped (see <out>/malformed_rows.csv), 50 campaigns, wall 0:04.47, max RSS 2048 KB. Peak RSS cross-checked by sampling /proc/<pid>/status during the run: VmHWM 2304 kB.",
+      "testedAt": "2026-11-21",
       "ci": null,
       "ownerPending": [
         {

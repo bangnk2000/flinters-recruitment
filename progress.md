@@ -40,3 +40,14 @@ Append-only, one block per session.
 - Numbers: the real file has 26,843,544 rows, CRLF line endings, 50 campaigns, 0 malformed rows, and spend with ≤ 2 decimals.
   A parse-only run took 3.67s wall time with max RSS 2048 KB. BenchmarkParse runs at 329 MB/s.
 - Issues: the Write tool turned the `﻿` escape into a raw BOM, which Go rejects. It now uses `"\xef\xbb\xbf"`.
+
+## 2026-11-21 — session 4
+- Goal: `agg/aggregate`.
+- Done: `internal/agg` (Totals, Campaign with CTR/CPA, Aggregator with Add/Campaigns) is wired into the CLI, and the stderr
+  summary now prints the campaign count.
+- Decisions:
+  - `Campaigns()` is sorted by ID so that output is deterministic. Ranking is left to the top10 features.
+  - CPA is computed as `float64(cents)/100/conversions`, and rounding happens only when formatting (top10).
+  - CTR = 0 without impressions is an agent default and stays in `ownerPending`.
+- Numbers: the real file has 50 campaigns. All totals match an independent awk sum, checked with a throwaway test that was
+  deleted before commit. The run took 4.47s wall time. Peak RSS is 2048 KB (`/usr/bin/time`) and VmHWM is 2304 KB (sampled from /proc).

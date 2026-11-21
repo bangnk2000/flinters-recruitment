@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"adagg/internal/agg"
 	"adagg/internal/ingest"
 )
 
@@ -96,12 +97,14 @@ func run(cfg config, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("cannot create malformed-row log: %w", err)
 	}
-	stats, parseErr := ingest.Parse(in, func(ingest.Record) {}, malformed.Write)
+	aggregator := agg.New()
+	stats, parseErr := ingest.Parse(in, aggregator.Add, malformed.Write)
 	if err := errors.Join(parseErr, malformed.Close()); err != nil {
 		return fmt.Errorf("cannot process %s: %w", cfg.input, err)
 	}
+	campaigns := aggregator.Campaigns()
 
-	fmt.Fprintf(stderr, "aggregator: %d rows processed, %d malformed rows skipped (see %s)\n",
-		stats.Rows, stats.Malformed, logPath)
+	fmt.Fprintf(stderr, "aggregator: %d rows processed, %d malformed rows skipped (see %s), %d campaigns\n",
+		stats.Rows, stats.Malformed, logPath, len(campaigns))
 	return nil
 }
