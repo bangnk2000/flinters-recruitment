@@ -1,6 +1,6 @@
 # flinters-recuitment — Agent Instructions
 
-Go CLI for the FV-SEC001 challenge (see `README.md`, the brief): stream a ~1GB ad-performance CSV,
+Go CLI for the FV-SEC001 challenge (see `docs/brief.md`, the brief): stream a ~1GB ad-performance CSV,
 aggregate per `campaign_id`, and write `top10_ctr.csv` and `top10_cpa.csv`. It is judged on
 correct output, clean code, error handling, memory efficiency and tests.
 
@@ -31,6 +31,15 @@ Toolchain: ledger-store=file agent-runtime=claude-code forge=github ci=none
 - Malformed rows (owner decision, 2026-11-21): skip the row and count it. Print the count to stderr.
   Also write every malformed row to `<output>/malformed_rows.csv` with these columns:
   `line_number,reason,raw_line`.
+- Owner decisions (2026-11-21, "giữ mặc định hết"):
+  - An empty file or a wrong header is fatal (exit 1).
+  - Spend with more than 2 decimals is malformed.
+  - CTR is 0 when impressions = 0.
+  - Ties on CTR or CPA are broken by campaign_id ascending.
+  - Format: CTR 4 dp, CPA and spend 2 dp.
+  - An empty CPA cell means there are no conversions.
+  - The parse stays single-threaded.
+  README §Design decisions states these rules.
 - Any rule you choose without the owner's decision goes in the entry's `ownerPending`, never only in
   prose.
 - `ad_data.csv` (~1GB) is never committed. Tests use `testdata/`. Only `perf/benchmark` reads the real file.
@@ -49,7 +58,7 @@ Toolchain: ledger-store=file agent-runtime=claude-code forge=github ci=none
 - [ ] Committed with a descriptive message.
 
 ## Where Deep Facts Live
-- Brief / acceptance criteria: `README.md` (to be replaced by the submission README in `docs/submission`;
-  then the brief moves to `docs/brief.md`)
+- Brief / acceptance criteria: `docs/brief.md`. `README.md` is the submission README (setup, run, numbers, decisions).
+- Benchmark: `bash scripts/benchmark.sh` writes `docs/benchmark.log` and `results/`.
 - Harness spec (not vendored): `knowledge-system/spec/init-harness/README.md`
 - Scaffolding: none. Code layout: `cmd/aggregator/` (main), `internal/…` (packages), `testdata/`.

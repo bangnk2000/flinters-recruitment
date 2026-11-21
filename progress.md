@@ -84,3 +84,13 @@ Append-only, one block per session.
   - No optimisation: 4.6s for 1 GB with ~2 MB RSS is good. Parallel parse is an `ownerPending` item on perf/benchmark.
 - Numbers: median wall time 4.60s. Read-only baseline is 0.16s, so the program is CPU-bound. maxrss is 2048–2304 kB and
   VmHWM is 2304 kB. Run 3 showed wall 2.67s < user 4.24s, which is a WSL clock artefact; it is kept as logged.
+
+## 2026-11-21 — session 8
+- Goal: `docs/submission`.
+- Done: the brief moved to docs/brief.md (git mv). New README.md covers setup, run, Docker, exit codes, tests,
+  libraries, numbers, decisions and layout. Added a Dockerfile (golang:1.25-alpine build → distroless/static, 8.74 MB) and
+  .dockerignore. AGENTS.md now points to docs/brief.md and lists the owner decisions.
+- Decisions: the owner answered "giữ mặc định hết" to all 8 open items. Every `ownerPending` is cleared, and the rules are
+  recorded in AGENTS.md Working Rules and README §Design decisions.
+- Numbers: the Docker run on the real file took 5.30s, and its outputs are byte-identical to results/.
+- State: all 7 ledger entries pass. The repo is ready to push to GitHub and submit.

@@ -2,6 +2,14 @@
 Newest first. On resume read ONLY the first entry. Close: prepend one entry, keep ≤ 5,
 move the oldest verbatim to docs/harness/session-handoff-archive.md.
 
+## 2026-11-21 (8) — submission docs; every entry passes (`docs/submission` = pass)
+- Done: README.md, docs/brief.md (moved), Dockerfile, .dockerignore. Owner decisions are recorded and ownerPending is cleared. Commit: see `git log -1`.
+- Proof: init.sh is green, all 11 README links resolve, `--help` gives exit 0, and the Docker image (8.74 MB) on the real file
+  is identical to results/.
+- Next: the owner pushes to a GitHub repo and emails the link (the brief's submission step). Nothing is left in the ledger.
+- Watch out: the PROMPTS.md rule still applies, so append any further prompt verbatim before the final push. If code changes,
+  rerun `bash scripts/benchmark.sh` so that README numbers and results/ stay true.
+
 ## 2026-11-21 (7) — benchmark + committed results (`perf/benchmark` = pass)
 - Done: scripts/benchmark.sh, docs/benchmark.log, results/*.csv. Commit: see `git log -1`.
 - Proof: 5 runs with a median of 4.60s and ~2.2 MB RSS (VmHWM 2304 kB). init.sh is green.
@@ -31,10 +39,3 @@ move the oldest verbatim to docs/harness/session-handoff-archive.md.
   Add `testdata/golden/top10_*.csv` so that gate [5] covers them.
 - Watch out: top10-ctr has 3 `ownerPending` items (tie-break, number format, CPA null rendering). Use the defaults
   unless the owner answers. To cross-check top10 against awk, reuse the sum script from progress session 4.
-
-## 2026-11-21 (3) — streaming parser + malformed log (`agg/stream-parse` = pass)
-- Done: internal/ingest (Parse, MalformedLog), CLI summary on stderr, sample + golden. Commit: see `git log -1`.
-- Proof: `bash init.sh` is green and gate [5] diffs the golden. The real 1GB file took 3.67s with max RSS 2 MB and 0 malformed rows.
-- Next: `agg/aggregate`. Replace the no-op `func(ingest.Record) {}` in `internal/cli/cli.go` with the aggregator, and copy
-  CampaignID (`m[string(b)]` lookup first, so that 26.8M rows don't allocate).
-- Watch out: 2 new `ownerPending` items on stream-parse. When writing Go source, never paste a raw BOM; use `\xef\xbb\xbf`.

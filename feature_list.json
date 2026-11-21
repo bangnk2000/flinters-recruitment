@@ -37,24 +37,7 @@
       "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 — jq lint, gofmt, vet, go test -race (ingest: TestParseRecord 21 cases, TestParseStream, TestParseHeaderErrors, TestParseStopsOnMalformedHandlerError, TestParseRecordDoesNotAllocate, MalformedLog tests; cli: 11 cases), build, gate [5] now live: bin/aggregator on testdata/sample.csv == testdata/golden/malformed_rows.csv. Runtime: `bin/aggregator --input testdata/sample.csv --output $T` -> exit 0, stderr \"aggregator: 7 rows processed, 6 malformed rows skipped (see $T/malformed_rows.csv)\". AC \"Handle malformed rows gracefully\" + \"Malformed rows written to a file\": malformed_rows.csv lists lines 8 invalid date, 9 \"expected 6 fields, got 5\", 10 empty line, 11 invalid clicks, 12 empty campaign_id, 13 invalid spend (line_number,reason,raw_line). AC \"Memory-efficient on ~1GB\": real ad_data.csv (CRLF) -> exit 0, \"26843544 rows processed, 0 malformed rows skipped\", wall 3.67s, max RSS 2048 KB (/usr/bin/time -v); BenchmarkParse 329 MB/s, 2 allocs per Parse call, 0 per row (AllocsPerRun test). Empty input / wrong header -> exit 1 (cli tests).",
       "testedAt": "2026-11-21",
       "ci": null,
-      "ownerPending": [
-        {
-          "item": "Missing/wrong header or empty file: fatal (exit 1) instead of per-row handling (brief silent)",
-          "since": "2026-11-21",
-          "options": [
-            "fatal exit 1 (agent default)",
-            "treat header as data, report rows malformed"
-          ]
-        },
-        {
-          "item": "spend with more than 2 decimals (brief: USD; real data max 2)",
-          "since": "2026-11-21",
-          "options": [
-            "malformed row (agent default)",
-            "round half-up to cents"
-          ]
-        }
-      ]
+      "ownerPending": []
     },
     {
       "id": "agg/aggregate",
@@ -73,16 +56,7 @@
       "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 — jq lint, gofmt, vet, go test -race (agg: TestAggregateSample, TestAddCopiesCampaignID, TestAddDoesNotAllocateForKnownCampaign, TestDerivedMetrics 3 cases; cli: 12 cases), build, gate [5] golden diff. AC \"Aggregate by campaign_id: totals, CTR, CPA (null if conversions = 0)\": TestAggregateSample sums testdata/sample.csv to CMP001 26000/640/9370c/27 … CMP004 9000/90/2000c/0 (hand-computed); TestDerivedMetrics: brief row CTR 0.05 CPA 20.0008, zero conversions -> CPA ok=false, zero impressions -> CTR 0. AC \"Correct results, matching expected values precisely\": real ad_data.csv totals for all 50 campaigns (impressions, clicks, spend cents, conversions) diff-identical to an independent awk sum (e.g. CMP001 13702609739/376766821/39582525210c/20450945). Runtime: sample -> exit 0, stderr \"... 6 malformed rows skipped (see <out>/malformed_rows.csv), 4 campaigns\"; real file -> exit 0, aggregator: 26843544 rows processed, 0 malformed rows skipped (see <out>/malformed_rows.csv), 50 campaigns, wall 0:04.47, max RSS 2048 KB. Peak RSS cross-checked by sampling /proc/<pid>/status during the run: VmHWM 2304 kB.",
       "testedAt": "2026-11-21",
       "ci": null,
-      "ownerPending": [
-        {
-          "item": "CTR when total_impressions = 0 (brief silent)",
-          "since": "2026-11-21",
-          "options": [
-            "CTR = 0",
-            "exclude from CTR ranking"
-          ]
-        }
-      ]
+      "ownerPending": []
     },
     {
       "id": "agg/top10-ctr",
@@ -100,33 +74,7 @@
       "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 — jq lint, gofmt, vet, go test -race (report: TestTopByCTROrdersAndTruncates 12->10 + input untouched, TestTopByCTRTieBreaksByID, TestTopByCTRFewerThanN, TestWriteCSV incl. brief row CMP042 -> \"12500.50,625,0.0500,20.00\" and zero-conversion empty CPA, TestWriteCSVFailsOnMissingDir, TestFormatCents), build, gate [5]: sample -> top10_ctr.csv == testdata/golden/top10_ctr.csv (CMP001 0.0246, CMP002 0.0164, CMP003 0.0136, CMP004 0.0100 with empty CPA). AC \"Top 10 campaigns with the highest CTR, CSV, brief column order\": real ad_data.csv -> exit 0, top10_ctr.csv has header + 10 rows (CMP005, CMP022, CMP023, CMP011, CMP018, CMP026, CMP019, CMP042, CMP004, CMP027), diff-identical to an independent awk ranking (full-precision CTR desc, id asc) with the same formatting; wall 4.77s, max RSS 2176 kB.",
       "testedAt": "2026-11-21",
       "ci": null,
-      "ownerPending": [
-        {
-          "item": "Tie-break on equal CTR",
-          "since": "2026-11-21",
-          "options": [
-            "campaign_id ascending",
-            "higher total_impressions first"
-          ]
-        },
-        {
-          "item": "Number format — observed: at 4 dp all 10 real top-CTR rows print 0.0275 (ranking uses full precision)",
-          "since": "2026-11-21",
-          "options": [
-            "CTR 4 dp, CPA 2 dp, spend 2 dp (as brief samples; agent default)",
-            "CTR 6 dp so the real ranking is visible",
-            "full precision"
-          ]
-        },
-        {
-          "item": "CPA null rendering in CSV",
-          "since": "2026-11-21",
-          "options": [
-            "empty cell",
-            "literal null"
-          ]
-        }
-      ]
+      "ownerPending": []
     },
     {
       "id": "agg/top10-cpa",
@@ -145,16 +93,7 @@
       "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 — jq lint, gofmt, vet, go test -race (report: TestTopByCPAOrdersAndTruncates 12->10 + input untouched, TestTopByCPAExcludesZeroConversionsAndTieBreaksByID, TestTopByCPAAllZeroConversions, plus the CTR/CSV tests), build, gate [5]: sample -> top10_cpa.csv == testdata/golden/top10_cpa.csv (CMP001 3.47, CMP003 3.75, CMP002 6.56; CMP004 with 0 conversions excluded). AC \"Top 10 campaigns with the lowest CPA, CSV\" + \"Exclude campaigns with zero conversions\": real ad_data.csv -> exit 0, top10_cpa.csv header + 10 rows (CMP016 19.29, CMP049, CMP032, CMP034, CMP040, CMP004, CMP047, CMP045, CMP022, CMP024 19.33), diff-identical to an independent awk ranking (zero-conversion campaigns skipped, full-precision CPA asc, id asc); wall 4.55s, max RSS 2048 kB.",
       "testedAt": "2026-11-21",
       "ci": null,
-      "ownerPending": [
-        {
-          "item": "Tie-break on equal CPA",
-          "since": "2026-11-21",
-          "options": [
-            "campaign_id ascending",
-            "higher total_conversions first"
-          ]
-        }
-      ]
+      "ownerPending": []
     },
     {
       "id": "perf/benchmark",
@@ -176,16 +115,7 @@
       "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 (all gates incl. gate [5] golden diff). AC \"Processing time for the 1GB file\" + \"Peak memory usage\" + \"Benchmark logs\": `RUNS=5 bash scripts/benchmark.sh` -> exit 0, docs/benchmark.log: 1043304870-byte input, AMD Ryzen 7 7700 (4 vCPU WSL2), Go 1.25.1; read-only baseline cat 0.16s; runs wall 4.60/4.70/2.67/4.63/4.53 s (median 4.60 s; run 3 wall < user is a WSL clock artefact, kept as logged), user 4.11-4.28 s, maxrss 2048-2304 kB; VmHWM sampled from /proc = 2304 kB. Every run: \"26843544 rows processed, 0 malformed rows skipped, 50 campaigns\". AC \"Output result files committed\": results/top10_ctr.csv, results/top10_cpa.csv (identical to the awk-verified outputs of sessions 5-6), results/malformed_rows.csv (header only). CPU-bound single thread (pprof: bytes.Cut/IndexByte + parseRecord); no optimisation applied, see ownerPending.",
       "testedAt": "2026-11-21",
       "ci": null,
-      "ownerPending": [
-        {
-          "item": "Parallel parse: ~3x faster on 4 cores (CPU-bound, 4.6s now) at the cost of chunked reading + ordered malformed-row line numbers",
-          "since": "2026-11-21",
-          "options": [
-            "keep single-threaded (agent default: 4.6s / 2 MB is already good, simpler code)",
-            "add a parallel parse as a new ledger entry"
-          ]
-        }
-      ]
+      "ownerPending": []
     },
     {
       "id": "docs/submission",
@@ -202,9 +132,9 @@
         "Dockerfile (optional)",
         "PROMPTS.md raw prompts"
       ],
-      "status": "todo",
-      "evidence": "",
-      "testedAt": null,
+      "status": "pass",
+      "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 (gofmt, vet, test -race, build, golden diff). AC \"README: setup, run, libraries, time, memory\" + \"Documented decisions\": README.md has Setup (Go 1.25+, unzip, build), How to run (flags, output files, stderr summary, exit codes), Docker, Tests, Libraries (stdlib only), Results (4.6s median, ~2.2 MB RSS, from docs/benchmark.log) and Design decisions incl. every owner-confirmed rule; all 11 relative links resolve; `bin/aggregator --help` -> exit 0. AC \"Dockerfile (optional)\": `docker build -t ad-aggregator .` -> exit 0, image 8.74 MB; `docker run --rm -v $PWD:/data:ro -v $D:/out ad-aggregator --input /data/ad_data.csv --output /out` -> exit 0 in 5.30s, stderr \"26843544 rows processed, 0 malformed rows skipped ..., 50 campaigns\", top10_ctr.csv / top10_cpa.csv / malformed_rows.csv byte-identical to results/; no args -> exit 2. AC \"PROMPTS.md raw prompts\": all owner prompts appended verbatim through this session. Brief moved to docs/brief.md (git mv); owner answered \"giữ mặc định hết\" -> all ownerPending cleared, rules recorded in AGENTS.md + README.",
+      "testedAt": "2026-11-21",
       "ci": null,
       "ownerPending": []
     }
