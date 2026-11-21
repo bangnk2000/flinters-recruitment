@@ -51,3 +51,16 @@ Append-only, one block per session.
   - CTR = 0 without impressions is an agent default and stays in `ownerPending`.
 - Numbers: the real file has 50 campaigns. All totals match an independent awk sum, checked with a throwaway test that was
   deleted before commit. The run took 4.47s wall time. Peak RSS is 2048 KB (`/usr/bin/time`) and VmHWM is 2304 KB (sampled from /proc).
+
+## 2026-11-21 — session 5
+- Goal: `agg/top10-ctr`.
+- Done: `internal/report` (TopByCTR, WriteCSV, formatCents), the CLI writes `top10_ctr.csv`, and
+  testdata/golden/top10_ctr.csv was added.
+- Decisions:
+  - Ranking uses full-precision float CTR with `cmp.Or(ctr desc, id asc)`. Equal rationals divide to the same float,
+    so ties are exact.
+  - Spend is printed from integer cents (exact) and CTR/CPA with `strconv` 'f'.
+  - WriteCSV is shared with top10-cpa.
+  - The owner hasn't answered the open questions, so the defaults apply.
+- Numbers: the real top-10 CTR output is diff-identical to an awk ranking. The run took 4.77s with max RSS 2176 kB.
+  All 10 real CTRs print as 0.0275 at 4 dp, which was added to the "Number format" `ownerPending` item.

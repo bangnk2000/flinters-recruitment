@@ -12,6 +12,7 @@ import (
 
 	"adagg/internal/agg"
 	"adagg/internal/ingest"
+	"adagg/internal/report"
 )
 
 // Exit codes returned by Run.
@@ -103,6 +104,10 @@ func run(cfg config, stderr io.Writer) error {
 		return fmt.Errorf("cannot process %s: %w", cfg.input, err)
 	}
 	campaigns := aggregator.Campaigns()
+
+	if err := report.WriteCSV(filepath.Join(cfg.output, report.TopCTRFile), report.TopByCTR(campaigns, report.TopN)); err != nil {
+		return fmt.Errorf("cannot write %s: %w", report.TopCTRFile, err)
+	}
 
 	fmt.Fprintf(stderr, "aggregator: %d rows processed, %d malformed rows skipped (see %s), %d campaigns\n",
 		stats.Rows, stats.Malformed, logPath, len(campaigns))

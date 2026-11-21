@@ -2,6 +2,13 @@
 Newest first. On resume read ONLY the first entry. Close: prepend one entry, keep ≤ 5,
 move the oldest verbatim to docs/harness/session-handoff-archive.md.
 
+## 2026-11-21 (5) — top10_ctr.csv (`agg/top10-ctr` = pass)
+- Done: internal/report (rank + CSV writer); the CLI writes top10_ctr.csv. Commit: see `git log -1`.
+- Proof: `bash init.sh` is green and gate [5] covers top10_ctr. The real output is identical to an awk ranking (4.77s, 2.1 MB).
+- Next: `agg/top10-cpa`. Add TopByCPA (exclude conversions = 0, CPA asc, id asc), `TopCPAFile`, a golden file,
+  and the awk cross-check (ctr-check pattern, progress session 5).
+- Watch out: at 4 dp, all 10 real top-CTR rows print 0.0275. The owner should decide the format (`ownerPending` on top10-ctr).
+
 ## 2026-11-21 (4) — per-campaign aggregation (`agg/aggregate` = pass)
 - Done: internal/agg + CLI wiring (the summary prints the campaign count). Commit: see `git log -1`.
 - Proof: `bash init.sh` is green. The 50 real-file totals are identical to an awk sum. Real run: 4.47s, RSS ~2 MB.

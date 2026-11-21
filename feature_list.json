@@ -96,9 +96,9 @@
       "acceptance": [
         "Top 10 campaigns with the highest CTR, CSV, brief's column order"
       ],
-      "status": "todo",
-      "evidence": "",
-      "testedAt": null,
+      "status": "pass",
+      "evidence": "Gates (CI_SINCE=false): bash init.sh exit 0 — jq lint, gofmt, vet, go test -race (report: TestTopByCTROrdersAndTruncates 12->10 + input untouched, TestTopByCTRTieBreaksByID, TestTopByCTRFewerThanN, TestWriteCSV incl. brief row CMP042 -> \"12500.50,625,0.0500,20.00\" and zero-conversion empty CPA, TestWriteCSVFailsOnMissingDir, TestFormatCents), build, gate [5]: sample -> top10_ctr.csv == testdata/golden/top10_ctr.csv (CMP001 0.0246, CMP002 0.0164, CMP003 0.0136, CMP004 0.0100 with empty CPA). AC \"Top 10 campaigns with the highest CTR, CSV, brief column order\": real ad_data.csv -> exit 0, top10_ctr.csv has header + 10 rows (CMP005, CMP022, CMP023, CMP011, CMP018, CMP026, CMP019, CMP042, CMP004, CMP027), diff-identical to an independent awk ranking (full-precision CTR desc, id asc) with the same formatting; wall 4.77s, max RSS 2176 kB.",
+      "testedAt": "2026-11-21",
       "ci": null,
       "ownerPending": [
         {
@@ -110,10 +110,11 @@
           ]
         },
         {
-          "item": "Number format",
+          "item": "Number format — observed: at 4 dp all 10 real top-CTR rows print 0.0275 (ranking uses full precision)",
           "since": "2026-11-21",
           "options": [
-            "CTR 4 dp, CPA 2 dp, spend 2 dp (as brief samples)",
+            "CTR 4 dp, CPA 2 dp, spend 2 dp (as brief samples; agent default)",
+            "CTR 6 dp so the real ranking is visible",
             "full precision"
           ]
         },
